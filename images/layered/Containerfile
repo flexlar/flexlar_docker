@@ -1,0 +1,58 @@
+ARG FLEXLAR_BRANCH=version-15
+
+FROM flexlar/build:${FLEXLAR_BRANCH} AS builder
+
+ARG FLEXLAR_BRANCH=version-15
+ARG FLEXLAR_PATH=https://github.com/flexlar/flexlar
+ARG APPS_JSON_BASE64
+
+USER root
+
+RUN if [ -n "${APPS_JSON_BASE64}" ]; then \
+    mkdir /opt/flexlar && echo "${APPS_JSON_BASE64}" | base64 -d > /opt/flexlar/apps.json; \
+  fi
+
+USER flexlar
+
+RUN export APP_INSTALL_ARGS="" && \
+  if [ -n "${APPS_JSON_BASE64}" ]; then \
+    export APP_INSTALL_ARGS="--apps_path=/opt/flexlar/apps.json"; \
+  fi && \
+  bench init ${APP_INSTALL_ARGS}\
+    --flexlar-branch=${FLEXLAR_BRANCH} \
+    --flexlar-path=${FLEXLAR_PATH} \
+    --no-procfile \
+    --no-backups \
+    --skip-redis-config-generation \
+    --verbose \
+    /home/flexlar/flexlar-bench && \
+  cd /home/flexlar/flexlar-bench && \
+  echo "{}" > sites/common_site_config.json && \
+  find apps -mindepth 1 -path "*/.git" | xargs rm -fr
+
+FROM flexlar/base:${FLEXLAR_BRANCH} AS backend
+
+USER flexlar
+
+COPY --from=builder --chown=flexlar:flexlar /home/flexlar/flexlar-bench /home/flexlar/flexlar-bench
+
+WORKDIR /home/flexlar/flexlar-bench
+
+VOLUME [ \
+  "/home/flexlar/flexlar-bench/sites", \
+  "/home/flexlar/flexlar-bench/sites/assets", \
+  "/home/flexlar/flexlar-bench/logs" \
+]
+
+CMD [ \
+  "/home/flexlar/flexlar-bench/env/bin/gunicorn", \
+  "--chdir=/home/flexlar/flexlar-bench/sites", \
+  "--bind=0.0.0.0:8000", \
+  "--threads=4", \
+  "--workers=2", \
+  "--worker-class=gthread", \
+  "--worker-tmp-dir=/dev/shm", \
+  "--timeout=120", \
+  "--preload", \
+  "flexlar.app:application" \
+]

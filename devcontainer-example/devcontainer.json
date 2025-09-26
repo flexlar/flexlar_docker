@@ -1,0 +1,32 @@
+{
+  "name": "Flexlar Bench",
+  "forwardPorts": [8000, 9000, 6787],
+  "remoteUser": "flexlar",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-vscode.live-server",
+        "grapecity.gc-excelviewer",
+        "mtxr.sqltools",
+        "visualstudioexptteam.vscodeintellicode"
+      ],
+      "settings": {
+        "terminal.integrated.profiles.linux": {
+          "flexlar bash": {
+            "path": "/bin/bash"
+          }
+        },
+        "terminal.integrated.defaultProfile.linux": "flexlar bash",
+        "debug.node.autoAttach": "disabled"
+      }
+    }
+  },
+  "dockerComposeFile": "./docker-compose.yml",
+  "service": "flexlar",
+  "workspaceFolder": "/workspace/development",
+  "shutdownAction": "stopCompose",
+  "mounts": [
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/flexlar/.ssh,type=bind,consistency=cached"
+  ]
+}
